@@ -59,9 +59,9 @@ After you're finished please remove all the comments and instructions!
 
 <!-- PROJECT DESCRIPTION -->
 
-# 📖 [your_project_name] <a name="about-project"></a>
+# 📖 data tools final project
 
-> Describe your project in 1 or 2 sentences.
+> my project is about restaurant ordering
 
 **[your_project__name]** is a...
 
