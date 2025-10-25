@@ -166,6 +166,8 @@ WHERE auth_id IS NULL;
 ```
 
 ---
+## Admin can add new users using magic email links in supabase
+<img width="1855" height="363" alt="image" src="https://github.com/user-attachments/assets/c8dea1ee-5a93-4eaa-ad48-bd4a9c8fefa5" />
 
 ## 🧪 Testing & Verification
 To verify setup:
@@ -174,11 +176,16 @@ To verify setup:
 ```sql
 SELECT * FROM customers;
 ```
+**Users based on roles**
+<img width="1820" height="477" alt="image" src="https://github.com/user-attachments/assets/62b6fe06-76f6-47de-b8a2-751849d0c212" />
 
 ### 2️⃣ Check all menu items
 ```sql
 SELECT * FROM menu_items;
 ```
+**Output for all menu items**
+<img width="1875" height="469" alt="image" src="https://github.com/user-attachments/assets/e56ddb51-2728-434c-abe0-8dc4234464c1" />
+
 
 ### 3️⃣ Insert an order (as logged-in user)
 ```sql
@@ -198,28 +205,12 @@ SELECT delete_order(2);
 
 ### 6️⃣ Test RLS visibility (should be restricted per role)
 ```sql
--- As normal user, should return only your orders
-SELECT * FROM orders;
 
 -- As admin, should return all orders
 SELECT * FROM orders;
 ```
-
-### 7️⃣ Check trigger working
-```sql
--- Simulate a new user creation (if you have Supabase Auth enabled)
-SELECT handle_new_user();
-```
-
-### 8️⃣ Promote another user
-```sql
-UPDATE customers SET role = 'admin' WHERE email = 'jane@gmail.com';
-```
-
-### 9️⃣ Revoke admin rights
-```sql
-UPDATE customers SET role = 'user' WHERE email = 'rahma@gmail.com';
-```
+**All orders output**
+<img width="1854" height="504" alt="image" src="https://github.com/user-attachments/assets/4537a451-f26b-48a9-871a-c60ecf527fcb" />
 
 ---
 
