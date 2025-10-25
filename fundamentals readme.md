@@ -1,74 +1,37 @@
-# Supabase Admin Roles & Security Project
+# 🧱 Data Fundamentals Project: Admin Roles & Security in Supabase
 
-<a name="readme-top"></a>
-
-<!-- TABLE OF CONTENTS -->
-
-# 📗 Table of Contents
-
-- [📖 About the Project](#about-project)
-  - [🛠 Built With](#built-with)
-    - [Tech Stack](#tech-stack)
-    - [Key Features](#key-features)
-  - [💻 Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Setup](#setup)
-    - [Database Schema](#database-schema)
-  - [📸 Screenshots](#screenshots)
-  - [👥 Authors](#authors)
-  - [🔭 Future Features](#future-features)
-  - [🤝 Contributing](#contributing)
+## 📖 Overview
+This project extends the **Data Tools Final Project** by adding **role-based access control**, **Row Level Security (RLS)**, and **Supabase Auth integration**.  
+You’ll manage Admin and User privileges, secure your tables, and automate user creation when new Auth accounts are registered.
 
 ---
 
-# 📖 Supabase Admin Roles & Security Project <a name="about-project"></a>
-
-**Supabase Admin Roles & Security Project** builds upon the **Restaurant Ordering SQL Project** by introducing **Row Level Security (RLS)**, **role-based access control**, and **custom SQL functions**.  
-It’s designed as part of the **Data Fundamentals Unit (Data Tools)** — a **4-week project** that teaches secure database administration in Supabase (Postgres).
-
----
-
-## 🛠 Built With <a name="built-with"></a>
-
-### Tech Stack <a name="tech-stack"></a>
-
-- SQL (PostgreSQL)
-- Supabase (Cloud-hosted Postgres)
-- Supabase Auth (Email/Magic Link)
+## 📚 Table of Contents
+1. [Overview](#-overview)  
+2. [Database Setup](#-database-setup)  
+3. [Roles & Policies](#-roles--policies)  
+4. [Admin Function](#-admin-function)  
+5. [Automatic User Sync](#-automatic-user-sync)  
+6. [Assigning Roles](#-assigning-roles)  
+7. [Testing & Verification](#-testing--verification)  
+8. [Deliverables](#-deliverables)  
+9. [Sample Queries](#-sample-queries)
 
 ---
 
-### Key Features <a name="key-features"></a>
+## 🏗️ Database Setup
+We build upon the previous project’s database (`customers`, `menu_items`, and `orders` tables) and add authentication and role-based security.
 
-- ✅ **Row Level Security (RLS)** enabled on all tables  
-- 🧑‍💼 **Admin and User roles** implemented  
-- 🔒 **Custom SQL policies** for secure CRUD access  
-- 🧩 **Admin-only SQL function** for order deletion  
-- 🗂️ **Documentation** via `README.md` and `security_notes.md`  
+```sql
+-- 1️⃣ Add Auth & Role columns (safe if not exist)
+ALTER TABLE customers 
+ADD COLUMN IF NOT EXISTS auth_id UUID;
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+ALTER TABLE customers 
+ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+```
 
----
-
-## 💻 Getting Started <a name="getting-started"></a>
-
-Follow these steps to set up and secure your Supabase database.
-
-### Prerequisites <a name="prerequisites"></a>
-
-You’ll need:  
-- A [Supabase Account](https://supabase.com/)  
-- Basic SQL knowledge  
-- Your **Restaurant Ordering SQL Project** schema
-
----
-
-### Setup <a name="setup"></a>
-
-1. Go to your Supabase project.  
-2. Reuse the `customers`, `menu_items`, and `orders` tables from your previous project.  
-3. Enable **Row Level Security (RLS)** for each table:
-
+Next, enable **Row Level Security** on all relevant tables:
 ```sql
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
@@ -77,38 +40,14 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 
 ---
 
-### Database Schema <a name="database-schema"></a>
-
-**Tables:**  
-- `customers`: Stores user information and roles  
-- `menu_items`: Lists available restaurant items  
-- `orders`: Links customers to their menu selections  
-
-**Add a Role Column:**
+## 🔒 Roles & Policies
+### 🧍 User Role
+Users can:
+- View **only their own** orders  
+- Insert **only their own** orders  
 
 ```sql
-ALTER TABLE customers ADD COLUMN role TEXT DEFAULT 'user';
-UPDATE customers SET role = 'admin' WHERE email = 'otieno@gmail.com';
-```
-
-**Admin and User Policies:**
-
-```sql
---Enable Row Level Security (RLS) for each table:
-ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
-
--- Add a column to link customers to Supabase Auth users
--- (This stores the user's UUID from Supabase Auth)
-ALTER TABLE customers ADD COLUMN auth_id UUID DEFAULT NULL;
-
-ALTER TABLE customers ADD COLUMN role TEXT DEFAULT 'user';
-UPDATE customers SET role = 'admin' WHERE email = 'otieno@gmail.com';
-
-
-
--- Users can only see/insert their own orders
+-- USERS: Can view only their own orders
 CREATE POLICY "Users view own orders"
 ON orders
 FOR SELECT
@@ -120,6 +59,7 @@ USING (
   )
 );
 
+-- USERS: Can insert only their own orders
 CREATE POLICY "Users insert own orders"
 ON orders
 FOR INSERT
@@ -130,8 +70,13 @@ WITH CHECK (
       AND customers.auth_id = auth.uid()
   )
 );
+```
 
---Admins have full access to all orders
+### 👑 Admin Role
+Admins can **read, insert, update, and delete** all data.
+
+```sql
+-- ADMINS: Full access
 CREATE POLICY "Admins full access to orders"
 ON orders
 FOR ALL
@@ -144,7 +89,10 @@ USING (
 );
 ```
 
-**Admin-only Function:**
+---
+
+## ⚙️ Admin Function
+Admins have a special function to delete any order:
 
 ```sql
 CREATE OR REPLACE FUNCTION delete_order(order_id INT)
@@ -154,7 +102,6 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Only allow admins to delete orders
   IF EXISTS (
     SELECT 1 
     FROM customers 
@@ -167,58 +114,122 @@ BEGIN
   END IF;
 END;
 $$;
-
 ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+This ensures only **admins** can perform deletions.
 
 ---
 
-## 📸 Screenshots <a name="screenshots"></a>
+## 🔁 Automatic User Sync
+When a new Supabase Auth user is created, a **trigger** automatically inserts them into the `customers` table with the default `user` role.
 
-**Customers Table**
-<img width="1893" height="476" alt="customers table" src="https://github.com/user-attachments/assets/placeholder-customers" />
+```sql
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.customers (full_name, email, auth_id, role)
+  VALUES (
+    COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User'),
+    NEW.email,
+    NEW.id,
+    'user'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-**Menu Items Table**
-<img width="1881" height="445" alt="menu items table" src="https://github.com/user-attachments/assets/placeholder-menu" />
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
-**Orders Table**
-<img width="1902" height="517" alt="orders table" src="https://github.com/user-attachments/assets/placeholder-orders" />
-
-**RLS and Policies in Supabase**
-<img width="1064" height="577" alt="rls policies" src="https://github.com/user-attachments/assets/placeholder-rls" />
-
-**ERD Diagram**
-<img width="1064" height="577" alt="erd diagram" src="https://github.com/user-attachments/assets/placeholder-erd" />
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
-
-## 👥 Authors <a name="authors"></a>
-
-👤 **Your Name Here**  
-- GitHub: [@yourgithub](https://github.com/yourgithub)  
-- Twitter: [@yourtwitter](https://twitter.com/yourtwitter)  
-- LinkedIn: [@yourlinkedin](https://linkedin.com/in/yourlinkedin)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+```
 
 ---
 
-## 🔭 Future Features <a name="future-features"></a>
-
-- [ ] Add **Payment Transactions Table**  
-- [ ] Integrate **Inventory Management**  
-- [ ] Connect **R or Python** for security auditing and visualization  
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+## 🧑‍💼 Assigning Roles
+You can manually promote yourself or others to **admin** using:
+```sql
+UPDATE customers
+SET role = 'admin'
+WHERE email = 'rahma@gmail.com';
+```
 
 ---
 
-## 🤝 Contributing <a name="contributing"></a>
+## 🔄 UUID Linking for Old Customers
+For older records (created before Auth integration), generate unique UUIDs:
+```sql
+UPDATE customers
+SET auth_id = gen_random_uuid()
+WHERE auth_id IS NULL;
+```
 
-Contributions, issues, and feature requests are welcome!  
-Feel free to check the [issues page](../../issues/).
+---
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+## 🧪 Testing & Verification
+To verify setup:
+
+### 1️⃣ Check all customers
+```sql
+SELECT * FROM customers;
+```
+
+### 2️⃣ Check all menu items
+```sql
+SELECT * FROM menu_items;
+```
+
+### 3️⃣ Insert an order (as logged-in user)
+```sql
+INSERT INTO orders (customer_id, menu_item_id, quantity)
+VALUES (1, 3, 2);
+```
+
+### 4️⃣ View only your own orders
+```sql
+SELECT * FROM orders;
+```
+
+### 5️⃣ Admin-only delete function
+```sql
+SELECT delete_order(2);
+```
+
+### 6️⃣ Test RLS visibility (should be restricted per role)
+```sql
+-- As normal user, should return only your orders
+SELECT * FROM orders;
+
+-- As admin, should return all orders
+SELECT * FROM orders;
+```
+
+### 7️⃣ Check trigger working
+```sql
+-- Simulate a new user creation (if you have Supabase Auth enabled)
+SELECT handle_new_user();
+```
+
+### 8️⃣ Promote another user
+```sql
+UPDATE customers SET role = 'admin' WHERE email = 'jane@gmail.com';
+```
+
+### 9️⃣ Revoke admin rights
+```sql
+UPDATE customers SET role = 'user' WHERE email = 'rahma@gmail.com';
+```
+
+---
+
+## 📦 Deliverables
+- Supabase database with **RLS** enabled  
+- **Admin/User** roles and security policies  
+- **Admin-only function** (`delete_order`)  
+- **Automatic user creation trigger**  
+- **Comprehensive documentation** (this README)  
+
+---
+
+✅ **End of Project: Admin Roles & Security in Supabase**
