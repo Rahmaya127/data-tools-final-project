@@ -94,24 +94,54 @@ UPDATE customers SET role = 'admin' WHERE email = 'otieno@gmail.com';
 **Admin and User Policies:**
 
 ```sql
+--Enable Row Level Security (RLS) for each table:
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+
+-- Add a column to link customers to Supabase Auth users
+-- (This stores the user's UUID from Supabase Auth)
+ALTER TABLE customers ADD COLUMN auth_id UUID DEFAULT NULL;
+
+ALTER TABLE customers ADD COLUMN role TEXT DEFAULT 'user';
+UPDATE customers SET role = 'admin' WHERE email = 'otieno@gmail.com';
+
+
+
 -- Users can only see/insert their own orders
 CREATE POLICY "Users view own orders"
 ON orders
 FOR SELECT
-USING (auth.uid() = customer_id);
+USING (
+  EXISTS (
+    SELECT 1 FROM customers
+    WHERE customers.id = orders.customer_id
+      AND customers.auth_id = auth.uid()
+  )
+);
 
 CREATE POLICY "Users insert own orders"
 ON orders
 FOR INSERT
-WITH CHECK (auth.uid() = customer_id);
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM customers
+    WHERE customers.id = orders.customer_id
+      AND customers.auth_id = auth.uid()
+  )
+);
 
--- Admins have full access
+--Admins have full access to all orders
 CREATE POLICY "Admins full access to orders"
 ON orders
 FOR ALL
-USING (EXISTS (
-  SELECT 1 FROM customers WHERE id = auth.uid() AND role = 'admin'
-));
+USING (
+  EXISTS (
+    SELECT 1 FROM customers
+    WHERE customers.auth_id = auth.uid()
+      AND role = 'admin'
+  )
+);
 ```
 
 **Admin-only Function:**
@@ -119,11 +149,25 @@ USING (EXISTS (
 ```sql
 CREATE OR REPLACE FUNCTION delete_order(order_id INT)
 RETURNS VOID
-LANGUAGE SQL
+LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
-  DELETE FROM orders WHERE id = order_id;
+BEGIN
+  -- Only allow admins to delete orders
+  IF EXISTS (
+    SELECT 1 
+    FROM customers 
+    WHERE auth_id = auth.uid() 
+      AND role = 'admin'
+  ) THEN
+    DELETE FROM orders WHERE id = order_id;
+  ELSE
+    RAISE EXCEPTION 'Permission denied: only admins can delete orders';
+  END IF;
+END;
 $$;
+
 ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
