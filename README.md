@@ -172,18 +172,22 @@ ORDER BY o.order_date;
 ### Screenshots from my test queries in Supabase
 
 **Customers Table**
+
 <img width="1906" height="807" alt="image" src="https://github.com/user-attachments/assets/96706ee7-595c-4de0-b7c1-6389259f863e" />
 
 
 **Menu Items Table**
+
 <img width="1904" height="703" alt="image" src="https://github.com/user-attachments/assets/84e9334a-0592-4495-b59b-7f51e48b31a7" />
 
 
 **Orders Table**
+
 <img width="1893" height="691" alt="image" src="https://github.com/user-attachments/assets/25dac8e1-6ff1-4b13-9a6d-21939cff708a" />
 
 
 **ERD (Entity Relationship Diagram)**
+
 <img width="1604" height="900" alt="image" src="https://github.com/user-attachments/assets/6b21b4c1-aa7c-4909-8a3e-6e120d2cfc49" />
 
 
